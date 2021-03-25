@@ -18,38 +18,24 @@ module_select_ui <- function(id, name, choices){
   selectInput(
     inputId = ns("selector"),
     label = name,
-    choices = choices
+    choices = NULL
   )
   
 }
 
-module_dropdowns_ui <- function(id){
+module_dropdowns_ui <- function(id, data){
   
   ns <- NS(id)
   
-  list(
-    useShinyjs(),
-    module_select_ui(
-      id = ns("group"),
-      name = "Group",
-      choices = NULL
-    ),
-    module_select_ui(
-      id = ns("subg"),
-      name = "Subgroup",
-      choices = NULL
-    ),
-    module_select_ui(
-      id = ns("ind"),
-      name = "Indicator",
-      choices = NULL
-    ),
-    module_select_ui(
-      id = ns("bd"),
-      name = "Breakdown",
-      choices = NULL
-    )
+  names <- names(data)
+  ids <- tolower(names)
+  
+  selectors <- map2(
+    .x = ns(ids), .y = names,
+    .f = module_select_ui
   )
+  
+  selectors
   
   
 }
@@ -63,15 +49,17 @@ module_select_server <- function(id, data, colname){
       observeEvent(
         data(),
         {
+          browser()
           updateSelectInput(
             session, "selector", 
-            choices = unique(pull(data(), {{ colname }} ))
+            choices = unique(pull(data(), .data[[colname]] ))
           )
         }
       )
       
       observe( 
         {
+          browser()
           shinyjs::toggle(
             id = "selector",
             condition = input[["selector"]] != "NA"
@@ -81,12 +69,15 @@ module_select_server <- function(id, data, colname){
       
       filtered_data <- reactive(
         {
+          browser()
           req(input[["selector"]])
-          filter(data(), {{ colname }} == input[["selector"]])
+          filter(data(), .data[[colname]] == input[["selector"]])
         }
       )
       
       list(
+        id = id,
+        colname = colname,
         value = reactive(input[["selector"]]),
         data = filtered_data
       )
@@ -102,20 +93,45 @@ module_dropdown_server <- function(id, data){
     id,
     function(input, output, session){
       
-      group <- module_select_server("group", reactive(data), Group)
-      subgroup <- module_select_server("subg", group$data, Subgroup)
-      indicator <- module_select_server("ind", subgroup$data, Indicator)
-      breakdown <- module_select_server("bd", indicator$data, Breakdown)
+      colnames <- names(data)
+      ids <- tolower(colnames)
+      
+      dropdowns <- list()
+      
+#      group <- module_select_server(id[[1]], reactive(data), sym(names[[1]]))
+      # group <- module_select_server(ids[[1]], reactive(data), colnames[[1]])
+      # subgroup <- module_select_server(ids[[2]], group$data, colnames[[2]])
+      # indicator <- module_select_server(ids[[3]], subgroup$data, colnames[[3]])
+      # breakdown <- module_select_server(ids[[4]], indicator$data, colnames[[4]])
+
+       browser()
+      for (i in seq_along(colnames)) {
+
+        if (i == 1){
+         dropdowns[[i]] <- module_select_server(ids[[i]], reactive(data), colnames[[i]])
+
+        } else {
+
+          dropdowns[[i]] <- module_select_server(ids[[i]], dropdowns[[i - 1]]$data, colnames[[i]])
+
+        }
+
+      }
+
+      
+      dropdowns
       
     }
+    
+    
   )
   
 }
 
 
 ui <- fluidPage(
-  module_dropdowns_ui("grocery"),
-  textOutput("grocery-test")
+  useShinyjs(),
+  module_dropdowns_ui("grocery", selections)
 )
 
 server <- function(input, output, session){
