@@ -40,7 +40,13 @@ module_dropdowns_ui <- function(id, data){
   
 }
 
-module_select_server <- function(id, data, colname){
+module_select_server <- function(data, id, colname){
+  
+  if (any(class(data) == "list")){
+    
+    data <- data$data
+    
+  }
   
   moduleServer(
     id,
@@ -49,7 +55,6 @@ module_select_server <- function(id, data, colname){
       observeEvent(
         data(),
         {
-          browser()
           updateSelectInput(
             session, "selector", 
             choices = unique(pull(data(), .data[[colname]] ))
@@ -59,17 +64,15 @@ module_select_server <- function(id, data, colname){
       
       observe( 
         {
-          browser()
           shinyjs::toggle(
             id = "selector",
-            condition = input[["selector"]] != "NA"
+            condition = input[["selector"]] != "NA" & length(unique(pull(data(), .data[[colname]] ))) > 1
           )
         }
       )
       
       filtered_data <- reactive(
         {
-          browser()
           req(input[["selector"]])
           filter(data(), .data[[colname]] == input[["selector"]])
         }
@@ -95,48 +98,33 @@ module_dropdown_server <- function(id, data){
       
       colnames <- names(data)
       ids <- tolower(colnames)
+      n_cols <- length(colnames)
       
-      dropdowns <- list()
+      dropdowns <- vector(mode = "list", length = n_cols)
       
-#      group <- module_select_server(id[[1]], reactive(data), sym(names[[1]]))
-      # group <- module_select_server(ids[[1]], reactive(data), colnames[[1]])
-      # subgroup <- module_select_server(ids[[2]], group$data, colnames[[2]])
-      # indicator <- module_select_server(ids[[3]], subgroup$data, colnames[[3]])
-      # breakdown <- module_select_server(ids[[4]], indicator$data, colnames[[4]])
-
-       browser()
-      for (i in seq_along(colnames)) {
-
-        if (i == 1){
-         dropdowns[[i]] <- module_select_server(ids[[i]], reactive(data), colnames[[i]])
-
-        } else {
-
-          dropdowns[[i]] <- module_select_server(ids[[i]], dropdowns[[i - 1]]$data, colnames[[i]])
-
-        }
-
-      }
-
+      dropdowns <-  accumulate2(.x = ids, .y = colnames, .f = module_select_server, .init = reactive(data))
+       
       
-      dropdowns
-      
+      dropdowns[2:ncols]
     }
-    
-    
   )
-  
 }
 
 
 ui <- fluidPage(
   useShinyjs(),
-  module_dropdowns_ui("grocery", selections)
+  module_dropdowns_ui("grocery", selections),
+  textOutput("bob")
 )
 
 server <- function(input, output, session){
   
   test <- module_dropdown_server("grocery", selections)
+  
+  output$bob <- reactive({
+    
+    browser()
+    })
   
 }
 
