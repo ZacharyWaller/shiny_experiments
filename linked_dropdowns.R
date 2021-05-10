@@ -105,7 +105,7 @@ module_dropdown_server <- function(id, data){
       dropdowns <-  accumulate2(.x = ids, .y = colnames, .f = module_select_server, .init = reactive(data))
        
       
-      dropdowns[2:ncols]
+      dropdowns[2:n_cols]
     }
   )
 }
@@ -123,7 +123,7 @@ server <- function(input, output, session){
   
   output$bob <- reactive({
     
-    browser()
+    input$`grocery-indicator-selector`
     })
   
 }
